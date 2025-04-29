@@ -1,6 +1,7 @@
-#Lo anter para crear un ejecutable del py
-#pip install pyinstaller
-#pyinstaller --onefile --console procesador_contable.py
+# Lo anterior para crear un ejecutable del py
+# pip install pyinstaller
+# pyinstaller --onefile --console procesador_contable.py
+
 import os
 import re
 import time
@@ -61,11 +62,13 @@ def process_file(path: str) -> pd.DataFrame:
     df_body.columns = df_body.iloc[0]
     df_data = df_body.iloc[1:].reset_index(drop=True)
 
-    # 5) Columnas de código y nombre
+    # 5) Columnas de código, nombre y transaccional
     code_col = next(c for c in df_data.columns
                     if 'código cuenta contable' in c.lower())
     name_col = next(c for c in df_data.columns
                     if 'nombre' in c.lower() and 'cuenta' in c.lower())
+    trans_col = next(c for c in df_data.columns
+                     if 'transaccional' in c.lower())
 
     # 6) Métricas numéricas
     metrics = ['Saldo inicial','Movimiento débito','Movimiento crédito','Saldo final']
@@ -76,29 +79,35 @@ def process_file(path: str) -> pd.DataFrame:
     # 7) Lookup de nombres
     name_map = dict(zip(df_data[code_col], df_data[name_col]))
 
-    # 8) Filtrar auxiliares
-    df_aux = df_data[df_data[code_col].str.len() == 8].copy()
+    # 8) Filtrar sólo filas transaccionales = "Sí"
+    df_trans = df_data[
+        df_data[trans_col].str.strip().str.lower() == 'sí'
+    ].copy()
 
     # 9) Desglose jerárquico
-    df_aux['Clase']     = df_aux[code_col].str[:1]
-    df_aux['Grupo']     = df_aux[code_col].str[:2]
-    df_aux['Cuenta']    = df_aux[code_col].str[:4]
-    df_aux['Subcuenta'] = df_aux[code_col].str[:6]
-    df_aux['Auxiliar']  = df_aux[code_col].str[:8]
-    df_aux['Fecha']     = fecha
+    df_trans['Clase']     = df_trans[code_col].str[:1]
+    df_trans['Grupo']     = df_trans[code_col].str[:2]
+    df_trans['Cuenta']    = df_trans[code_col].str[:4]
+    df_trans['Subcuenta'] = df_trans[code_col].str[:6]
 
-    # 10) Columnas nuevas
-    df_aux['Sucursal']      = df_aux['Sucursal']
-    df_aux['Nombre tercero']= df_aux['Nombre tercero']
+    # 10) Auxiliar: si el código tiene al menos 8 dígitos, tomo los 8 primeros; si no, "no aplica"
+    df_trans['Auxiliar'] = df_trans[code_col].apply(
+        lambda x: x[:8] if len(x) >= 8 else 'no aplica'
+    )
+    df_trans['Nombre_auxiliar'] = df_trans['Auxiliar'].map(name_map).fillna('no aplica')
 
     # 11) Nombres niveles
-    df_aux['Nombre Clase']    = df_aux['Clase'].map(name_map)
-    df_aux['Nombre_Grupo']    = df_aux['Grupo'].map(name_map)
-    df_aux['Nombre_cuenta']   = df_aux['Cuenta'].map(name_map)
-    df_aux['Nombre_sub']      = df_aux['Subcuenta'].map(name_map)
-    df_aux['Nombre_auxiliar'] = df_aux['Auxiliar'].map(name_map)
+    df_trans['Nombre Clase']  = df_trans['Clase'].map(name_map).fillna('no aplica')
+    df_trans['Nombre_Grupo']  = df_trans['Grupo'].map(name_map).fillna('no aplica')
+    df_trans['Nombre_cuenta'] = df_trans['Cuenta'].map(name_map).fillna('no aplica')
+    df_trans['Nombre_sub']    = df_trans['Subcuenta'].map(name_map).fillna('no aplica')
 
-    # 12) Columnas finales
+    # 12) Columnas originales y fecha
+    df_trans['Sucursal']       = df_trans.get('Sucursal', pd.Series()).fillna('no aplica')
+    df_trans['Nombre tercero'] = df_trans.get('Nombre tercero', pd.Series()).fillna('no aplica')
+    df_trans['Fecha']          = fecha
+
+    # 13) Columnas finales
     final_cols = [
       'Clase','Nombre Clase',
       'Grupo','Nombre_Grupo',
@@ -110,7 +119,10 @@ def process_file(path: str) -> pd.DataFrame:
       'Movimiento crédito','Saldo final',
       'Fecha'
     ]
-    return df_aux.reindex(columns=final_cols)
+    df_out = df_trans.reindex(columns=final_cols)
+
+    # 14) Rellenar con "no aplica" todos los campos vacíos
+    return df_out.fillna('no aplica')
 
 class ExcelHandler(FileSystemEventHandler):
     def __init__(self, watch_dir: str, output_dir: str):
