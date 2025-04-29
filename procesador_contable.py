@@ -1,6 +1,7 @@
 # Lo anterior para crear un ejecutable del py
 # pip install pyinstaller
 # pyinstaller --onefile --console procesador_contable.py
+# Hola mundo!
 
 import os
 import re
