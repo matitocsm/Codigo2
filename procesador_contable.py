@@ -1,7 +1,6 @@
 #Lo anter para crear un ejecutable del py
 #pip install pyinstaller
 #pyinstaller --onefile --console procesador_contable.py
-#aquí vamos a poner un cambio
 import os
 import re
 import time
