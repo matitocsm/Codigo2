@@ -1,1 +1,17 @@
 /procesador_contable Respaldo.py
+procesador_contable.spec
+build/procesador_contable/Analysis-00.toc
+build/procesador_contable/base_library.zip
+build/procesador_contable/EXE-00.toc
+build/procesador_contable/PKG-00.toc
+build/procesador_contable/procesador_contable.pkg
+build/procesador_contable/PYZ-00.pyz
+build/procesador_contable/PYZ-00.toc
+build/procesador_contable/warn-procesador_contable.txt
+build/procesador_contable/xref-procesador_contable.html
+build/procesador_contable/localpycs/pyimod01_archive.pyc
+build/procesador_contable/localpycs/pyimod02_importers.pyc
+build/procesador_contable/localpycs/pyimod03_ctypes.pyc
+build/procesador_contable/localpycs/pyimod04_pywin32.pyc
+build/procesador_contable/localpycs/struct.pyc
+dist/procesador_contable.exe

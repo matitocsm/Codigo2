@@ -102,10 +102,22 @@ def process_file(path: str) -> pd.DataFrame:
     df_trans['Nombre_cuenta'] = df_trans['Cuenta'].map(name_map).fillna('no aplica')
     df_trans['Nombre_sub']    = df_trans['Subcuenta'].map(name_map).fillna('no aplica')
 
-    # 12) Columnas originales y fecha
-    df_trans['Sucursal']       = df_trans.get('Sucursal', pd.Series()).fillna('no aplica')
-    df_trans['Nombre tercero'] = df_trans.get('Nombre tercero', pd.Series()).fillna('no aplica')
-    df_trans['Fecha']          = fecha
+    # 12) Columnas originales y fecha, con empty‐string y NaN → "no aplica"
+    if 'Sucursal' in df_trans.columns:
+        df_trans['Sucursal'] = df_trans['Sucursal'] \
+                                   .replace('', 'no aplica') \
+                                   .fillna('no aplica')
+    else:
+        df_trans['Sucursal'] = 'no aplica'
+
+    if 'Nombre tercero' in df_trans.columns:
+        df_trans['Nombre tercero'] = df_trans['Nombre tercero'] \
+                                         .replace('', 'no aplica') \
+                                         .fillna('no aplica')
+    else:
+        df_trans['Nombre tercero'] = 'no aplica'
+
+    df_trans['Fecha'] = fecha
 
     # 13) Columnas finales
     final_cols = [
