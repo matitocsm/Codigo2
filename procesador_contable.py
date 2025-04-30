@@ -119,8 +119,17 @@ def process_file(path: str) -> pd.DataFrame:
 
     df_trans['Fecha'] = fecha
 
-    # 13) Columnas finales
+    # 13) Categoria según Clase
+    df_trans['Categoria'] = df_trans['Clase'].apply(
+        lambda c: 'Balance general' if c in {'1','2','3','9'} else 'Estado resultado'
+    )
+
+    # 14) Saldo mes = Movimiento débito - Movimiento crédito
+    df_trans['saldo mes'] = df_trans['Movimiento débito'] - df_trans['Movimiento crédito']
+
+    # 15) Columnas finales
     final_cols = [
+      'Categoria',
       'Clase','Nombre Clase',
       'Grupo','Nombre_Grupo',
       'Cuenta','Nombre_cuenta',
@@ -128,12 +137,12 @@ def process_file(path: str) -> pd.DataFrame:
       'Auxiliar','Nombre_auxiliar',
       'Sucursal','Nombre tercero',
       'Saldo inicial','Movimiento débito',
-      'Movimiento crédito','Saldo final',
+      'Movimiento crédito','saldo mes','Saldo final',
       'Fecha'
     ]
     df_out = df_trans.reindex(columns=final_cols)
 
-    # 14) Rellenar con "no aplica" todos los campos vacíos
+    # 16) Rellenar con "no aplica" todos los campos vacíos
     return df_out.fillna('no aplica')
 
 class ExcelHandler(FileSystemEventHandler):
