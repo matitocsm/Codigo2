@@ -137,7 +137,7 @@ def process_file(path: str) -> pd.DataFrame:
       'Auxiliar','Nombre_auxiliar',
       'Sucursal','Nombre tercero',
       'Saldo inicial','Movimiento débito',
-      'Movimiento crédito','saldo mes','Saldo final',
+      'Movimiento crédito','Saldo mes','Saldo final',
       'Fecha'
     ]
     df_out = df_trans.reindex(columns=final_cols)
