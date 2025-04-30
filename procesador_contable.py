@@ -26,15 +26,13 @@ def parse_fecha(fecha_str: str) -> datetime:
         raise ValueError(f"No pude parsear la fecha: {fecha_str!r}")
     mes_sp, año = m.groups()
     mes_num = SPANISH_MONTHS.get(mes_sp.lower())
-    if not mes_num:
-        raise ValueError(f"Mes desconocido: {mes_sp!r}")
     año, mes = int(año), int(mes_num)
     _, ultimo_dia = calendar.monthrange(año, mes)
     return datetime(año, mes, ultimo_dia).date()
 
 def process_file(path: str) -> pd.DataFrame:
     # 1) Intentamos leer hasta 10 veces si PermissionError
-    for i in range(10):
+    for _ in range(10):
         try:
             df_raw = pd.read_excel(path, header=None, dtype=str,
                                    keep_default_na=False, engine='openpyxl')
@@ -90,7 +88,7 @@ def process_file(path: str) -> pd.DataFrame:
     df_trans['Cuenta']    = df_trans[code_col].str[:4]
     df_trans['Subcuenta'] = df_trans[code_col].str[:6]
 
-    # 10) Auxiliar: si el código tiene al menos 8 dígitos, tomo los 8 primeros; si no, "no aplica"
+    # 10) Auxiliar
     df_trans['Auxiliar'] = df_trans[code_col].apply(
         lambda x: x[:8] if len(x) >= 8 else 'no aplica'
     )
@@ -102,32 +100,22 @@ def process_file(path: str) -> pd.DataFrame:
     df_trans['Nombre_cuenta'] = df_trans['Cuenta'].map(name_map).fillna('no aplica')
     df_trans['Nombre_sub']    = df_trans['Subcuenta'].map(name_map).fillna('no aplica')
 
-    # 12) Columnas originales y fecha, con empty‐string y NaN → "no aplica"
-    if 'Sucursal' in df_trans.columns:
-        df_trans['Sucursal'] = df_trans['Sucursal'] \
-                                   .replace('', 'no aplica') \
-                                   .fillna('no aplica')
-    else:
-        df_trans['Sucursal'] = 'no aplica'
+    # 12) Sucursal / Nombre tercero
+    df_trans['Sucursal']       = df_trans.get('Sucursal','').replace('','no aplica').fillna('no aplica')
+    df_trans['Nombre tercero'] = df_trans.get('Nombre tercero','').replace('','no aplica').fillna('no aplica')
 
-    if 'Nombre tercero' in df_trans.columns:
-        df_trans['Nombre tercero'] = df_trans['Nombre tercero'] \
-                                         .replace('', 'no aplica') \
-                                         .fillna('no aplica')
-    else:
-        df_trans['Nombre tercero'] = 'no aplica'
-
+    # 13) Fecha
     df_trans['Fecha'] = fecha
 
-    # 13) Categoria según Clase
+    # 14) Categoria según Clase
     df_trans['Categoria'] = df_trans['Clase'].apply(
         lambda c: 'Balance general' if c in {'1','2','3','9'} else 'Estado resultado'
     )
 
-    # 14) Saldo mes = Movimiento débito - Movimiento crédito
+    # 15) Saldo mes
     df_trans['saldo mes'] = df_trans['Movimiento débito'] - df_trans['Movimiento crédito']
 
-    # 15) Columnas finales
+    # 16) Columnas finales
     final_cols = [
       'Categoria',
       'Clase','Nombre Clase',
@@ -140,10 +128,7 @@ def process_file(path: str) -> pd.DataFrame:
       'Movimiento crédito','saldo mes','Saldo final',
       'Fecha'
     ]
-    df_out = df_trans.reindex(columns=final_cols)
-
-    # 16) Rellenar con "no aplica" todos los campos vacíos
-    return df_out.fillna('no aplica')
+    return df_trans.reindex(columns=final_cols).fillna('no aplica')
 
 class ExcelHandler(FileSystemEventHandler):
     def __init__(self, watch_dir: str, output_dir: str):
@@ -156,17 +141,14 @@ class ExcelHandler(FileSystemEventHandler):
             return
         try:
             df_new = process_file(event.src_path)
-
-            # Si ya existe, chequeo fecha duplicada
+            # si ya existe, evitar duplicar por fecha
             if os.path.exists(self.final_path):
-                df_old = pd.read_excel(self.final_path, engine='openpyxl')
-                fechas_old = set(df_old['Fecha'].astype(str).unique())
+                df_old     = pd.read_excel(self.final_path, engine='openpyxl')
+                fechas_old = set(df_old['Fecha'].astype(str))
                 fecha_new  = str(df_new['Fecha'].iat[0])
                 if fecha_new in fechas_old:
                     print(f"[SKIP] {os.path.basename(event.src_path)} ya procesado.")
                     return
-
-                # Abrir y anexar sólo nuevas filas
                 wb = load_workbook(self.final_path)
                 ws = wb.active
                 for r in dataframe_to_rows(df_new, index=False, header=False):
@@ -174,33 +156,33 @@ class ExcelHandler(FileSystemEventHandler):
                 wb.save(self.final_path)
             else:
                 df_new.to_excel(self.final_path, index=False)
-
             print(f"Añadido a procesado_final: {os.path.basename(event.src_path)}")
-
         except PermissionError:
             print(f"[ERROR] Acceso denegado tras 10 intentos: {os.path.basename(event.src_path)}")
         except Exception as e:
             print(f"[ERROR] Procesando {os.path.basename(event.src_path)}: {e}")
 
 if __name__ == "__main__":
-    WATCH_DIR  = r"C:\datos\Practicas"
-    OUTPUT_DIR = r"C:\datos\Practicas\salida"
+    # usa tu carpeta de OneDrive sincronizada localmente
+    onedrive = os.environ.get('OneDrive')
+    if not onedrive:
+        raise RuntimeError("No detecté la carpeta OneDrive en tu máquina")
+    WATCH_DIR  = os.path.join(onedrive, "Prácticas UNIR - Pruebas")
+    OUTPUT_DIR = os.path.join(WATCH_DIR, "salida")
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     handler = ExcelHandler(WATCH_DIR, OUTPUT_DIR)
 
-    # --- Procesar cualquier .xlsx que ya esté en la carpeta al iniciar ---
+    # procesar al inicio cualquier .xlsx ya presente
     for f in os.listdir(WATCH_DIR):
         if f.lower().endswith(".xlsx"):
-            event = type("E", (), {"src_path": os.path.join(WATCH_DIR, f)})
-            handler.on_created(event)
-    # --------------------------------------------------------------------------------
+            evt = type("E", (), {"src_path": os.path.join(WATCH_DIR, f)})
+            handler.on_created(evt)
 
     observer = Observer()
     observer.schedule(handler, WATCH_DIR, recursive=False)
     observer.start()
     print(f"Vigilando {WATCH_DIR}…")
-
     try:
         while True:
             time.sleep(1.0)
