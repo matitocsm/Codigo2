@@ -120,16 +120,16 @@ def process_file(path: str) -> pd.DataFrame:
     df_trans['Fecha'] = fecha
 
     # 13) Categoria según Clase
-    df_trans['Categoria'] = df_trans['Clase'].apply(
-        lambda c: 'Balance general' if c in {'1','2','3','9'} else 'Estado resultado'
+    df_trans['Categoría'] = df_trans['Clase'].apply(
+        lambda c: 'Balance general' if c in {'1','2','3','9'} else 'Estado de Resultado'
     )
 
     # 14) Saldo mes = Movimiento débito - Movimiento crédito
-    df_trans['saldo mes'] = df_trans['Movimiento débito'] - df_trans['Movimiento crédito']
+    df_trans['Saldo mes'] = df_trans['Movimiento débito'] - df_trans['Movimiento crédito']
 
     # 15) Columnas finales
     final_cols = [
-      'Categoria',
+      'Categoría',
       'Clase','Nombre Clase',
       'Grupo','Nombre_Grupo',
       'Cuenta','Nombre_cuenta',
