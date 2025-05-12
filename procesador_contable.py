@@ -125,7 +125,7 @@ def process_file(path: str) -> pd.DataFrame:
     }
     df_trans = df_trans.rename(columns=rename_map)
 
-    # 16) Columnas finales en el mismo orden, nuevos nombres aplicados
+    # 16) Columnas finales en el mismo orden, usando nombres originales de métricas
     final_cols = [
         'Categoría',
         'Clase','Nombre Clase',
@@ -138,7 +138,14 @@ def process_file(path: str) -> pd.DataFrame:
         'Movimiento crédito','Saldo mes','Saldo final',
         'Fecha'
     ]
-    return df_trans.reindex(columns=final_cols).fillna('no aplica')
+    df_final = df_trans.reindex(columns=final_cols).fillna('no aplica')
+
+    # 17) Normalizar encabezados: primera letra mayúscula, resto minúscula, espacios -> underscore
+    df_final.columns = [
+        col.strip().lower().replace(' ', '_').capitalize()
+        for col in df_final.columns
+    ]
+    return df_final
 
 class ExcelHandler(FileSystemEventHandler):
     def __init__(self, watch_dir: str, output_dir: str):
@@ -191,13 +198,11 @@ if __name__ == "__main__":
 
         handler = ExcelHandler(sub, out_dir)
 
-        # --- Procesar cualquier .xlsx ya existente en esa subcarpeta ---
+        # Procesar .xlsx ya existente
         for f in os.listdir(sub):
             if f.lower().endswith(".xlsx"):
                 evt = type("E", (), {"src_path": os.path.join(sub, f)})
                 handler.on_created(evt)
-        # ----------------------------------------------------------------
-
         observer.schedule(handler, sub, recursive=False)
 
     observer.start()
