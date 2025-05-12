@@ -101,7 +101,7 @@ def process_file(path: str) -> pd.DataFrame:
     df_trans['Nombre_cuenta'] = df_trans['Cuenta'].map(name_map).fillna('no aplica')
     df_trans['Nombre_sub']    = df_trans['Subcuenta'].map(name_map).fillna('no aplica')
 
-    # 12) Columnas originales y fecha, con empty‐string y NaN → "no aplica"
+    # 12) Columnas originales y fecha
     df_trans['Sucursal']       = df_trans.get('Sucursal','').replace('','no aplica').fillna('no aplica')
     df_trans['Nombre tercero'] = df_trans.get('Nombre tercero','').replace('','no aplica').fillna('no aplica')
     df_trans['Fecha']          = fecha
@@ -114,18 +114,29 @@ def process_file(path: str) -> pd.DataFrame:
     # 14) Saldo mes = Movimiento débito - Movimiento crédito
     df_trans['Saldo mes'] = df_trans['Movimiento débito'] - df_trans['Movimiento crédito']
 
-    # 15) Columnas finales
+    # 15) Renombre de niveles (rotación solicitada)
+    rename_map = {
+        'Auxiliar': 'Sub_cuenta',
+        'Nombre_auxiliar': 'Nombre_subcuenta',
+        'Subcuenta': 'Cuenta',
+        'Nombre_sub': 'Nombre_Cuenta',
+        'Cuenta': 'Sub_grupo',
+        'Nombre_cuenta': 'Nombre_subgrupo'
+    }
+    df_trans = df_trans.rename(columns=rename_map)
+
+    # 16) Columnas finales en el mismo orden, nuevos nombres aplicados
     final_cols = [
-      'Categoría',
-      'Clase','Nombre Clase',
-      'Grupo','Nombre_Grupo',
-      'Cuenta','Nombre_cuenta',
-      'Subcuenta','Nombre_sub',
-      'Auxiliar','Nombre_auxiliar',
-      'Sucursal','Nombre tercero',
-      'Saldo inicial','Movimiento débito',
-      'Movimiento crédito','Saldo mes','Saldo final',
-      'Fecha'
+        'Categoría',
+        'Clase','Nombre Clase',
+        'Grupo','Nombre_Grupo',
+        'Sub_grupo','Nombre_subgrupo',
+        'Cuenta','Nombre_Cuenta',
+        'Sub_cuenta','Nombre_subcuenta',
+        'Sucursal','Nombre tercero',
+        'Saldo inicial','Movimiento débito',
+        'Movimiento crédito','Saldo mes','Saldo final',
+        'Fecha'
     ]
     return df_trans.reindex(columns=final_cols).fillna('no aplica')
 
